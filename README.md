@@ -94,7 +94,7 @@ Table of contents:
 4. Tag your Docker worker node with the label `loki-extras=true`.
 
     ```shell
-    docker node update <your_worker_name> --label-add loki-extras=true
+    docker node update <your_docker_worker_node_name> --label-add loki-extras=true
     ```
 
 This node will be used to run compactor, index-gateway and memcached containers isolated from the other components.
