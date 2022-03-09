@@ -157,16 +157,17 @@ docker service ls
 Output:
 
 ```
-ID             NAME                                        MODE         REPLICAS                 IMAGE                PORTS
-xqdepob704xp   loki-distributed-swarm_loki-compactor             replicated   1/1                      grafana/loki:2.3.0
-nhdl3gk2xl7c   loki-distributed-swarm_loki-distributor           replicated   3/3 (max 1 per node)     grafana/loki:2.3.0
-xcbfvpmlo1gv   loki-distributed-swarm_loki-index-gateway         replicated   1/1 (max 4 per node)     grafana/loki:2.3.0
-hebpovbmixca   loki-distributed-swarm_loki-ingester              replicated   3/3 (max 1 per node)     grafana/loki:2.3.0
-mmbq91hhdota   loki-distributed-swarm_loki-querier               replicated   12/12 (max 4 per node)   grafana/loki:2.3.0
-dzwj1o8rxesr   loki-distributed-swarm_loki-query-frontend        replicated   3/3                      grafana/loki:2.3.0
-qz4i4m7rgfu1   loki-distributed-swarm_memcached-chunks           replicated   1/1                      memcached:1.6
-3tswwa7qn0nm   loki-distributed-swarm_memcached-index            replicated   1/1                      memcached:1.6
-sey2zdh2kafn   loki-distributed-swarm_memcached-query-frontend   replicated   1/1                      memcached:1.6
+ID             NAME                                        MODE         REPLICAS                 IMAGE                       PORTS
+rovgwafdqb3e   loki-distributed_loki-compactor             replicated   1/1                      grafana/loki:2.4.2
+o7z9372ec187   loki-distributed_loki-distributor           replicated   3/3 (max 1 per node)     grafana/loki:2.4.2
+bgzlczm56yhk   loki-distributed_loki-gateway               replicated   1/1                      nginx:1.21                  *:80->80/tcp, *:3100->3100/tcp
+j49lybsrp25e   loki-distributed_loki-index-gateway         replicated   1/1 (max 4 per node)     grafana/loki:2.4.2
+i5azx9n4n321   loki-distributed_loki-ingester              replicated   3/3 (max 1 per node)     grafana/loki:2.4.2
+mdqake085bg9   loki-distributed_loki-querier               replicated   12/12 (max 4 per node)   grafana/loki:2.4.2
+4flu1ndv39zz   loki-distributed_loki-query-frontend        replicated   3/3                      grafana/loki:2.4.2
+yx6uy5in1kpc   loki-distributed_memcached-chunks           replicated   1/1                      memcached:1.6
+ay4k9njy52am   loki-distributed_memcached-index            replicated   1/1                      memcached:1.6
+n8osmi5e9mrg   loki-distributed_memcached-query-frontend   replicated   1/1                      memcached:1.6
 ```
 
 ## Distributor Ring
