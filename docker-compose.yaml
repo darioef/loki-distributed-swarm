@@ -1,0 +1,292 @@
+version: "3.8"
+
+networks:
+  loki:
+  nginx:
+## Uncomment the next two lines if you need to enable Prometheus monitoring to this cluster (requires docker-swarm-monitor stack).
+# mon:
+#  external: true
+
+services:
+  loki-gateway:
+    image: nginx:1.21
+    configs:
+      - source: nginx-conf
+        target: /etc/nginx/nginx.conf
+
+## Uncomment the lines below and the secrets section at the bottom of this file if you need to enable basic auth.
+## You'll also need to uncomment lines 19 & 20 in config/nginx/nginx-loki-gateway.conf.
+## /config/nginx/.htpasswd must be created by you.
+
+#   secrets:
+#     - source: nginx-auth
+#       target: /etc/nginx/.htpasswd
+
+    ports:
+      - "80:80"
+      - "3100:3100"
+    networks:
+      - nginx
+      - loki
+#     - mon                                                            # Uncomment if your using cluster monitoring
+    deploy:
+      restart_policy:
+        delay: 3s
+        condition: on-failure
+      placement:
+        constraints: [node.labels.loki-extras != true]
+    logging:
+      driver: "json-file"
+      options:
+        max-size: 10m
+        max-file: "3"
+
+  loki-query-frontend:
+    image: grafana/loki:2.4.2
+    configs:
+      - source: loki-conf
+        target: /etc/loki/loki-docker.yaml
+      - source: loki-entrypoint
+        target: /tmp/loki-entrypoint.sh
+    entrypoint: [ "sh", "/tmp/loki-entrypoint.sh" ]
+    command: [ "-config.file=/etc/loki/loki-docker.yaml", "-target=query-frontend" ]
+    networks:
+      - loki
+#     - mon                                                            # Uncomment if your using cluster monitoring
+    deploy:
+      endpoint_mode: vip
+      mode: replicated
+      replicas: 3
+      restart_policy:
+        delay: 3s
+        condition: on-failure
+      labels:
+          - "prometheus-job=loki-frontend"
+      resources:
+        limits:
+          memory: 2048M                                                # Change this value according to your nodes and needs.
+      placement:
+        constraints: [node.labels.loki-extras != true]
+
+  loki-distributor:
+    image: grafana/loki:2.4.2
+    configs:
+      - source: loki-conf
+        target: /etc/loki/loki-docker.yaml
+      - source: loki-entrypoint
+        target: /tmp/loki-entrypoint.sh
+    entrypoint: [ "sh", "/tmp/loki-entrypoint.sh" ]
+    command: [ "-config.file=/etc/loki/loki-docker.yaml", "-target=distributor" ]
+    networks:
+      loki:
+        aliases:
+          - loki-distributor
+#     mon:                                                             # Uncomment if your using cluster monitoring
+    deploy:
+      endpoint_mode: dnsrr
+      replicas: 3
+      restart_policy:
+        delay: 3s
+        condition: on-failure
+      placement:
+        max_replicas_per_node: 1                                       # Max number of distributors per node
+        constraints: [node.labels.loki-extras != true]
+      labels:
+          - "prometheus-job=loki-distributor"
+      resources:
+        limits:
+          memory: 6096M                                                # Change this value according to your nodes and needs.
+
+  loki-ingester:
+    image: grafana/loki:2.4.2
+    configs:
+      - source: loki-conf
+        target: /etc/loki/loki-docker.yaml
+      - source: loki-entrypoint
+        target: /tmp/loki-entrypoint.sh
+    entrypoint: [ "sh", "/tmp/loki-entrypoint.sh" ]
+    command: [ "-config.file=/etc/loki/loki-docker.yaml", "-target=ingester", "-config.expand-env=true" ]
+    networks:
+      loki:
+        aliases:
+          - loki-ingester
+#     mon:                                                             # Uncomment if your using cluster monitoring
+    deploy:
+      endpoint_mode: dnsrr
+      replicas: 3
+      restart_policy:
+        delay: 3s
+        condition: on-failure
+      placement:
+        max_replicas_per_node: 1                                       # Max number of ingesters per node
+        constraints: [node.labels.loki-extras != true]
+      labels:
+          - "prometheus-job=loki-ingester"
+      resources:
+        limits:
+          memory: 6096M                                                # Change this value according to your nodes and needs.
+    env_file:
+      - ./AWS.env                                                      # Configure AWS/S3 variables before deploying this stack (AWS.env file)
+
+  loki-querier:
+    image: grafana/loki:2.4.2
+    configs:
+      - source: loki-conf
+        target: /etc/loki/loki-docker.yaml
+      - source: loki-entrypoint
+        target: /tmp/loki-entrypoint.sh
+    entrypoint: [ "sh", "/tmp/loki-entrypoint.sh" ]
+    command: [ "-config.file=/etc/loki/loki-docker.yaml", "-target=querier", "-config.expand-env=true" ]
+    networks:
+      loki:
+        aliases:
+          - loki-querier
+#     mon:                                                             # Uncomment if your using cluster monitoring
+    deploy:
+      endpoint_mode: dnsrr
+      replicas: 12                                                     # Choose the number of replicas that fits your needs.
+      restart_policy:
+        delay: 3s
+        condition: on-failure
+      placement:
+        max_replicas_per_node: 4                                       # Max number of queriers per node
+        constraints: [node.labels.loki-extras != true]
+      labels:
+          - "prometheus-job=loki-querier"
+      resources:
+        limits:
+          cpus: '1'
+    env_file:
+      - ./AWS.env                                                      # Configure AWS/S3 variables before deploying this stack (AWS.env file)
+
+  loki-index-gateway:
+    image: grafana/loki:2.4.2
+    configs:
+      - source: loki-conf
+        target: /etc/loki/loki-docker.yaml
+      - source: loki-entrypoint
+        target: /tmp/loki-entrypoint.sh
+    entrypoint: [ "sh", "/tmp/loki-entrypoint.sh" ]
+    command: [ "-config.file=/etc/loki/loki-docker.yaml", "-target=index-gateway", "-config.expand-env=true" ]
+    networks:
+      loki:
+        aliases:
+          - loki-index-gateway
+#     mon:                                                             # Uncomment if your using cluster monitoring
+    deploy:
+      endpoint_mode: dnsrr
+      replicas: 1
+      restart_policy:
+        delay: 3s
+        condition: on-failure
+      placement:
+        max_replicas_per_node: 4
+        constraints: [node.labels.loki-extras == true]
+      labels:
+          - "prometheus-job=loki-index-gateway"
+    env_file:
+      - ./AWS.env                                                      # Configure AWS/S3 variables before deploying this stack (AWS.env file)
+
+  loki-compactor:
+    image: grafana/loki:2.4.2
+    configs:
+      - source: loki-conf
+        target: /etc/loki/loki-docker.yaml
+      - source: loki-entrypoint
+        target: /tmp/loki-entrypoint.sh
+    entrypoint: [ "sh", "/tmp/loki-entrypoint.sh" ]
+    command: [ "-config.file=/etc/loki/loki-docker.yaml", "-target=compactor", "-config.expand-env=true" ]
+    networks:
+      loki:
+        aliases:
+          - loki-compactor
+#     mon:                                                             # Uncomment if your using cluster monitoring
+    deploy:
+      endpoint_mode: dnsrr
+      replicas: 1
+      restart_policy:
+        delay: 3s
+        condition: on-failure
+      placement:
+        constraints: [node.labels.loki-extras == true]
+      labels:
+          - "prometheus-job=loki-compactor"
+    volumes:
+      - compactor-data:/loki
+    env_file:
+      - ./AWS.env                                                      # Configure AWS/S3 variables before deploying this stack (AWS.env file)
+
+  memcached-query-frontend:
+    image: memcached:1.6
+    networks:
+      loki:
+        aliases:
+          - memcached-query-frontend
+#     mon:
+    deploy:
+      replicas: 1
+      restart_policy:
+        delay: 3s
+        condition: on-failure
+      placement:
+        constraints: [node.labels.loki-extras != true]
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+    command: -m 4024 -c 10240 -I 32m                                   # Modify the amount of memory used by Memcached that fits your needs (-m)
+
+  memcached-index:
+    image: memcached:1.6
+    networks:
+      loki:
+        aliases:
+          - memcached-index
+#     mon:                                                             # Uncomment if your using cluster monitoring
+    deploy:
+      replicas: 1
+      restart_policy:
+        delay: 3s
+        condition: on-failure
+      placement:
+        constraints: [node.labels.loki-extras == true]
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+    command: -m 4024 -c 10240 -I 32m                                   # Modify the amount of memory used by Memcached that fits your needs (-m)
+
+  memcached-chunks:
+    image: memcached:1.6
+    networks:
+      loki:
+        aliases:
+          - memcached-chunks
+#     mon:                                                             # Uncomment if your using cluster monitoring
+    deploy:
+      replicas: 1
+      restart_policy:
+        delay: 3s
+        condition: on-failure
+      placement:
+        constraints: [node.labels.loki-extras == true]
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+    command: -m 4024 -c 10240 -I 32m                                   # Modify the amount of memory used by Memcached that fits your needs (-m)
+
+configs:
+  loki-conf:
+    file: ./config/loki/loki-docker.yaml
+  nginx-conf:
+    file: ./config/nginx/nginx-loki-gateway.conf
+  loki-entrypoint:
+    file: ./entrypoint/loki/loki-entrypoint.sh
+  loki-ingester-entrypoint:
+    file: ./entrypoint/loki/loki-ingester-entrypoint.sh
+
+volumes:
+  compactor-data: {}
+
+## Uncomment the lines below if you need to enable basic auth.
+#secrets:
+#  nginx-auth:
+#    file: ./config/nginx/.htpasswd
