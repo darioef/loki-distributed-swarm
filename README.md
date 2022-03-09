@@ -53,7 +53,7 @@ Table of contents:
 # Requirements
 
 * Docker in Swarm mode: 3 masters + 1 worker (installation/configuration not covered here)
-* AWS ALB or any load balancer to route incomming traffic to your Docker nodes
+* AWS ALB or any load balancer to route incoming traffic to your Docker nodes
 * AWS S3 bucket (or compatible)
 * AWS IAM User + Policy attached with RW permissions on the S3 Bucket.
 
@@ -106,7 +106,7 @@ This node will be used to run compactor, index-gateway and memcached containers 
     git clone https://github.com/darioef/loki-distributed-swarm.git
     ```
 
-6. Open the recently created directory, edit AWS.env file located at the root of the project and complete the environment variables's values needed for Loki to connect to your S3 Bucket using the credentials created in step 3.
+6. Open the recently created directory, edit AWS.env file located at the root of the project and complete the environment variables's values needed by Loki to connect to your S3 Bucket using the credentials created in step 3.
 
     ```
     AWS_BUCKETNAME=                                 # Insert your AWS S3 Bucketname here
