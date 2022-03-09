@@ -126,7 +126,7 @@ cd /opt/loki-distributed-swarm
 ## Create stack
 
 ```bash
-docker stack deploy -c docker-compose.yaml loki-distributed
+docker stack deploy -c docker-compose.yaml loki-distributed-swarm
 ```
 
 Output:
